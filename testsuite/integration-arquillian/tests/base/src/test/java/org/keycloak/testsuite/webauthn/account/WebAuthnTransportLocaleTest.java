@@ -143,6 +143,8 @@ public class WebAuthnTransportLocaleTest extends AbstractWebAuthnAccountTest {
             assertAuthenticatorTransport.accept("NFC", 3);
             assertAuthenticatorTransport.accept("USB", 4);
             assertAuthenticatorTransport.accept("USB", 5);
+
+            webAuthnLoginPage.clickAuthenticate();
         }
     }
 
