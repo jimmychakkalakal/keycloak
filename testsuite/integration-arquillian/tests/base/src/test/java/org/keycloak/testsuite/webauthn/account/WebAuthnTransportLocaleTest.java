@@ -61,25 +61,13 @@ public class WebAuthnTransportLocaleTest extends AbstractWebAuthnAccountTest {
     }
 
     @Test
-    public void localizationTransportNFC() {
-        assertLocalizationIndividual(DEFAULT_NFC.getOptions(), "NFC", "NFC");
-        logout();
-        waitForPageToLoad();
-    }
+    public void localizationTransportNFC() { assertLocalizationIndividual(DEFAULT_NFC.getOptions(), "NFC", "NFC"); }
 
     @Test
-    public void localizationTransportBluetooth() {
-        assertLocalizationIndividual(DEFAULT_BLE.getOptions(), "Bluetooth", "Bluetooth");
-        logout();
-        waitForPageToLoad();
-    }
+    public void localizationTransportBluetooth() { assertLocalizationIndividual(DEFAULT_BLE.getOptions(), "Bluetooth", "Bluetooth"); }
 
     @Test
-    public void localizationTransportInternal() {
-        assertLocalizationIndividual(DEFAULT_INTERNAL.getOptions(), "Internal", "Interní");
-        logout();
-        waitForPageToLoad();
-    }
+    public void localizationTransportInternal() { assertLocalizationIndividual(DEFAULT_INTERNAL.getOptions(), "Internal", "Interní"); }
 
     @Test
     public void multipleTransports() throws IOException {
