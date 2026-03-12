@@ -98,8 +98,6 @@ public abstract class AbstractWebAuthnAccountTest extends AbstractAuthTest imple
         if (!isDriverFirefox(driver)) {
             webAuthnManager.removeAuthenticator();
         }
-        logout();
-        waitForPageToLoad();
     }
 
     public VirtualAuthenticatorManager getVirtualAuthManager() {
