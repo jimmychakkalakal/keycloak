@@ -55,21 +55,29 @@ public class WebAuthnTransportLocaleTest extends AbstractWebAuthnAccountTest {
     @Test
     public void localizationTransportUSB() {
         assertLocalizationIndividual(DEFAULT_USB.getOptions(), "USB", "USB");
+        logout();
+        waitForPageToLoad();
     }
 
     @Test
     public void localizationTransportNFC() {
         assertLocalizationIndividual(DEFAULT_NFC.getOptions(), "NFC", "NFC");
+        logout();
+        waitForPageToLoad();
     }
 
     @Test
     public void localizationTransportBluetooth() {
         assertLocalizationIndividual(DEFAULT_BLE.getOptions(), "Bluetooth", "Bluetooth");
+        logout();
+        waitForPageToLoad();
     }
 
     @Test
     public void localizationTransportInternal() {
         assertLocalizationIndividual(DEFAULT_INTERNAL.getOptions(), "Internal", "Interní");
+        logout();
+        waitForPageToLoad();
     }
 
     @Test
@@ -143,8 +151,6 @@ public class WebAuthnTransportLocaleTest extends AbstractWebAuthnAccountTest {
             assertAuthenticatorTransport.accept("NFC", 3);
             assertAuthenticatorTransport.accept("USB", 4);
             assertAuthenticatorTransport.accept("USB", 5);
-
-            webAuthnLoginPage.clickAuthenticate();
         }
     }
 
