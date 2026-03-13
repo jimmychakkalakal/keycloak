@@ -54,11 +54,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 public class WebAuthnTransportLocaleTest extends AbstractWebAuthnAccountTest {
 
     @Test
-    public void localizationTransportUSB() {
-        assertLocalizationIndividual(DEFAULT_USB.getOptions(), "USB", "USB");
-        logout();
-        waitForPageToLoad();
-    }
+    public void localizationTransportUSB() { assertLocalizationIndividual(DEFAULT_USB.getOptions(), "USB", "USB"); }
 
     @Test
     public void localizationTransportNFC() { assertLocalizationIndividual(DEFAULT_NFC.getOptions(), "NFC", "NFC"); }
