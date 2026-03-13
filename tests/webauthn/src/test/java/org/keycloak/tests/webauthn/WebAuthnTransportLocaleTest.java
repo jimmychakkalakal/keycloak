@@ -29,6 +29,7 @@ import org.keycloak.authentication.authenticators.browser.WebAuthnAuthenticatorF
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.credential.WebAuthnCredentialModel;
 import org.keycloak.representations.idm.CredentialRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.testframework.annotations.KeycloakIntegrationTest;
 import org.keycloak.testframework.remote.runonserver.InjectRunOnServer;
 import org.keycloak.testframework.remote.runonserver.RunOnServerClient;
@@ -201,8 +202,21 @@ public class WebAuthnTransportLocaleTest extends AbstractWebAuthnVirtualTest {
     }
 
     private void addWebAuthnCredential(String label) {
-        // Use the default user and add WebAuthn credential via registration flow
-        registerDefaultUser(label);
+        // Add WebAuthn required action to the existing user
+        UserResource user = userResource();
+        UserRepresentation userRep = user.toRepresentation();
+        userRep.getRequiredActions().add("webauthn-register");
+        user.update(userRep);
+        
+        // Login and complete WebAuthn registration
+        oAuthClient.openLoginForm();
+        loginPage.assertCurrent();
+        loginPage.fillLogin(USERNAME, PASSWORD);
+        loginPage.submit();
+        
+        webAuthnRegisterPage.assertCurrent();
+        webAuthnRegisterPage.clickRegister();
+        webAuthnRegisterPage.registerWebAuthnCredential(label);
     }
 
     private int getUserCredentialsCount() {
