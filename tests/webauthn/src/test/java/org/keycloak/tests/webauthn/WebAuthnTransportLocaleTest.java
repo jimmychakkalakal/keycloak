@@ -37,8 +37,11 @@ import org.keycloak.tests.webauthn.authenticators.DefaultVirtualAuthOptions;
 import org.keycloak.tests.webauthn.page.WebAuthnLoginPage;
 
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.virtualauthenticator.VirtualAuthenticatorOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.keycloak.tests.webauthn.authenticators.DefaultVirtualAuthOptions.DEFAULT;
 import static org.keycloak.tests.webauthn.authenticators.DefaultVirtualAuthOptions.DEFAULT_BLE;
@@ -50,17 +53,41 @@ import static org.keycloak.testsuite.util.FlowUtil.inCurrentRealm;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/**
- * Test for checking localization for authenticator transport media name
- *
- * @author <a href="mailto:mabartos@redhat.com">Martin Bartos</a>
- */
+
 @KeycloakIntegrationTest
 public class WebAuthnTransportLocaleTest extends AbstractWebAuthnVirtualTest {
-    
+
+    private static final Logger log = LoggerFactory.getLogger(WebAuthnTransportLocaleTest.class);
+
     @InjectRunOnServer(realmRef = "webauthn")
     RunOnServerClient runOnServer;
+
+    @AfterEach
+    public void cleanupCredentials() {
+
+        // Ensure user is logged out
+        try {
+            oAuthClient.openLogoutForm();
+            logoutConfirmPage.assertCurrent();
+            logoutConfirmPage.confirmLogout();
+            infoPage.assertCurrent();
+            assertEquals("Odhlášení bylo úspěšné", infoPage.getInfo());
+        } catch (Exception e) {
+            log.error("Cannot logout user");
+        }
+
+        // Clear browser cookies to reset locale preference
+        driver.driver().manage().deleteAllCookies();
+
+        // Remove all WebAuthn credentials from the user to ensure test isolation
+        UserResource user = userResource();
+        List<CredentialRepresentation> credentials = user.credentials();
+        credentials.stream()
+                .filter(credentialRepresentation -> WebAuthnCredentialModel.TYPE_TWOFACTOR.equals(credentialRepresentation.getType()))
+                .forEach(credentialRepresentation -> user.removeCredential(credentialRepresentation.getId()));
+    }
 
     @Test
     public void localizationTransportUSB() {
@@ -101,13 +128,11 @@ public class WebAuthnTransportLocaleTest extends AbstractWebAuthnVirtualTest {
         addAndVerifyAuthenticator.accept(DEFAULT_USB, 4);
         addAndVerifyAuthenticator.accept(DEFAULT, 5);
 
-        setUpWebAuthnFlow("webAuthnFlow");
+        setUpWebAuthnFlow();
 
         logout();
         oAuthClient.openLoginForm();
-        loginPage.assertCurrent();
-        loginPage.fillLogin(USERNAME, PASSWORD);
-        loginPage.submit();
+        loginToAccount();
         webAuthnLoginPage.assertCurrent();
 
         final Supplier<List<WebAuthnLoginPage.WebAuthnAuthenticatorItem>> getItems = () -> {
@@ -138,9 +163,7 @@ public class WebAuthnTransportLocaleTest extends AbstractWebAuthnVirtualTest {
 
         logout();
         oAuthClient.openLoginForm();
-        loginPage.assertCurrent();
-        loginPage.fillLogin(USERNAME, PASSWORD);
-        loginPage.submit();
+        loginToAccount();
         webAuthnLoginPage.assertCurrent();
 
         // Switch to Czech locale
@@ -182,13 +205,11 @@ public class WebAuthnTransportLocaleTest extends AbstractWebAuthnVirtualTest {
         final int webAuthnCount = getUserCredentialsCount();
         assertThat(webAuthnCount, is(1));
 
-        setUpWebAuthnFlow("webAuthnFlow");
+        setUpWebAuthnFlow();
         logout();
 
         oAuthClient.openLoginForm();
-        loginPage.assertCurrent();
-        loginPage.fillLogin(USERNAME, PASSWORD);
-        loginPage.submit();
+        loginToAccount();
 
         webAuthnLoginPage.assertCurrent();
 
@@ -201,22 +222,44 @@ public class WebAuthnTransportLocaleTest extends AbstractWebAuthnVirtualTest {
         webAuthnLoginPage.clickAuthenticate();
     }
 
+    private void loginToAccount() {
+        loginPage.assertCurrent();
+        loginPage.fillLogin(USERNAME, PASSWORD);
+        loginPage.submit();
+    }
+
     private void addWebAuthnCredential(String label) {
+        // Temporarily switch to a simple password-only flow to avoid WebAuthn authentication
+        // This allows adding multiple credentials without being prompted to authenticate with existing ones
+        runOnServer.run(session -> inCurrentRealm(session).copyBrowserFlow("temp-password-flow"));
+        runOnServer.run(session -> inCurrentRealm(session)
+                .selectFlow("temp-password-flow")
+                .inForms(forms -> forms
+                        .clear()
+                        .addAuthenticatorExecution(AuthenticationExecutionModel.Requirement.REQUIRED, UsernamePasswordFormFactory.PROVIDER_ID)
+                )
+                .defineAsBrowserFlow()
+        );
+
         // Add WebAuthn required action to the existing user
         UserResource user = userResource();
         UserRepresentation userRep = user.toRepresentation();
         userRep.getRequiredActions().add("webauthn-register");
         user.update(userRep);
-        
+
+        // Logout first to ensure clean state
+        logout();
+
         // Login and complete WebAuthn registration
         oAuthClient.openLoginForm();
-        loginPage.assertCurrent();
-        loginPage.fillLogin(USERNAME, PASSWORD);
-        loginPage.submit();
-        
+        loginToAccount();
+
         webAuthnRegisterPage.assertCurrent();
         webAuthnRegisterPage.clickRegister();
         webAuthnRegisterPage.registerWebAuthnCredential(label);
+
+        // Wait for registration to complete - verify OAuth redirect happened
+        assertThat(oAuthClient.parseLoginResponse().getCode(), notNullValue());
     }
 
     private int getUserCredentialsCount() {
@@ -227,10 +270,10 @@ public class WebAuthnTransportLocaleTest extends AbstractWebAuthnVirtualTest {
                 .count();
     }
 
-    private void setUpWebAuthnFlow(String newFlowAlias) {
-        runOnServer.run(session -> inCurrentRealm(session).copyBrowserFlow(newFlowAlias));
+    private void setUpWebAuthnFlow() {
+        runOnServer.run(session -> inCurrentRealm(session).copyBrowserFlow("webAuthnFlow"));
         runOnServer.run(session -> inCurrentRealm(session)
-                .selectFlow(newFlowAlias)
+                .selectFlow("webAuthnFlow")
                 .inForms(forms -> forms
                         .clear()
                         .addAuthenticatorExecution(AuthenticationExecutionModel.Requirement.REQUIRED, UsernamePasswordFormFactory.PROVIDER_ID)
