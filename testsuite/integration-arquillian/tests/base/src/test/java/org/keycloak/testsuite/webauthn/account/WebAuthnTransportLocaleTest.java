@@ -25,6 +25,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import org.junit.Ignore;
+
 import org.keycloak.testsuite.arquillian.annotation.IgnoreBrowserDriver;
 import org.keycloak.testsuite.webauthn.authenticators.DefaultVirtualAuthOptions;
 import org.keycloak.testsuite.webauthn.pages.WebAuthnAuthenticatorsList;
@@ -49,6 +51,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
  *
  * @author <a href="mailto:mabartos@redhat.com">Martin Bartos</a>
  */
+@Ignore("Test-Migrated using new Test-Famework")
 @IgnoreBrowserDriver(FirefoxDriver.class) // See https://github.com/keycloak/keycloak/issues/10368
 public class WebAuthnTransportLocaleTest extends AbstractWebAuthnAccountTest {
 
