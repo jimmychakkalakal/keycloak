@@ -64,18 +64,24 @@ public class WebAuthnTransportLocaleTest extends AbstractWebAuthnVirtualTest {
     @InjectRunOnServer(realmRef = "webauthn")
     RunOnServerClient runOnServer;
 
+    @org.junit.jupiter.api.BeforeEach
+    public void setupLocale() {
+        // Clear cookies to reset locale from any previous test
+        driver.driver().manage().deleteAllCookies();
+    }
+
     @AfterEach
     public void cleanupCredentials() {
 
         // Ensure user is logged out
         try {
             oAuthClient.openLogoutForm();
-            logoutConfirmPage.assertCurrent();
-            logoutConfirmPage.confirmLogout();
-            infoPage.assertCurrent();
-            assertEquals("Odhlášení bylo úspěšné", infoPage.getInfo());
+            // Only proceed if we're actually on the logout confirm page
+            if (logoutConfirmPage.getExpectedPageId().equals(driver.page().getCurrentPageId())) {
+                logoutConfirmPage.confirmLogout();
+            }
         } catch (Exception e) {
-            log.error("Cannot logout user");
+            log.error("Cannot logout user", e);
         }
 
         // Clear browser cookies to reset locale preference
@@ -220,6 +226,23 @@ public class WebAuthnTransportLocaleTest extends AbstractWebAuthnVirtualTest {
         checkTransportName.accept(localizedText);
 
         webAuthnLoginPage.clickAuthenticate();
+        
+        // Wait for OAuth callback to complete
+        assertThat(oAuthClient.parseLoginResponse().getCode(), notNullValue());
+        
+        // Verify logout message in Czech
+        logoutAndVerifyCzech();
+    }
+    
+    /**
+     * Logout and verify Czech logout message
+     */
+    private void logoutAndVerifyCzech() {
+        oAuthClient.openLogoutForm();
+        logoutConfirmPage.assertCurrent();
+        logoutConfirmPage.confirmLogout();
+        infoPage.assertCurrent();
+        assertEquals("Odhlášení bylo úspěšné", infoPage.getInfo());
     }
 
     private void loginToAccount() {
