@@ -166,6 +166,9 @@ public class WebAuthnTransportLocaleTest extends AbstractWebAuthnVirtualTest {
 
         webAuthnLoginPage.assertCurrent();
         webAuthnLoginPage.clickAuthenticate();
+        
+        // Wait for OAuth callback to complete before logout
+        assertThat(oAuthClient.parseLoginResponse().getCode(), notNullValue());
 
         logout();
         oAuthClient.openLoginForm();
