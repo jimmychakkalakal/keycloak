@@ -356,6 +356,127 @@ public class CIBATest extends AbstractClientPoliciesTest {
     }
 
     @Test
+    public void testBackchannelAuthnReqWithBruteForceProtectedUser() throws Exception {
+        ClientResource clientResource = null;
+        ClientRepresentation clientRep = null;
+        RealmRepresentation realmRep;
+        try {
+            final String username = "nutzername-schwarz";
+
+            clientResource = AdminApiUtil.findClientByClientId(managedRealm.admin(), TEST_CLIENT_NAME);
+            clientRep = clientResource.toRepresentation();
+            prepareCIBASettings(clientResource, clientRep);
+            oauth.scope(OAuth2Constants.OFFLINE_ACCESS);
+            oauth.client(TEST_CLIENT_NAME, TEST_CLIENT_PASSWORD);
+
+            // Enable brute force protection on realm
+            realmRep = managedRealm.admin().toRepresentation();
+            RealmRepresentation backupRealm = new RealmRepresentation();
+            backupRealm.setBruteForceProtected(realmRep.isBruteForceProtected());
+            backupRealm.setFailureFactor(realmRep.getFailureFactor());
+            backupRealm.setMaxDeltaTimeSeconds(realmRep.getMaxDeltaTimeSeconds());
+
+            realmRep.setBruteForceProtected(true);
+            realmRep.setFailureFactor(2);
+            realmRep.setMaxDeltaTimeSeconds(60);
+            managedRealm.admin().update(realmRep);
+
+            List<UserRepresentation> users = managedRealm.admin().users().search(username);
+            assertThat(users.size(), is(1));
+            UserRepresentation user = users.get(0);
+
+            for (int i = 0; i < 3; i++) {
+                oauth.client(TEST_CLIENT_NAME, TEST_CLIENT_PASSWORD);
+                oauth.passwordGrantRequest(username, "wrongpassword").send();
+            }
+
+            // Verify user is temporarily disabled due to brute force
+            // Backchannel Authentication Request should fail
+            AuthenticationRequestAcknowledgement response = oauth.ciba().backchannelAuthenticationRequest(username).send();
+            assertThat(response.getStatusCode(), is(equalTo(400)));
+            assertThat(response.getError(), is(OAuthErrorException.INVALID_REQUEST));
+            assertThat(response.getErrorDescription(), is("user temporarily disabled"));
+
+            managedRealm.admin().attackDetection().clearBruteForceForUser(user.getId());
+
+            response = oauth.ciba().backchannelAuthenticationRequest(username).send();
+            assertThat(response.getStatusCode(), is(equalTo(200)));
+            assertThat(response.getAuthReqId(), notNullValue());
+
+            realmRep.setBruteForceProtected(backupRealm.isBruteForceProtected());
+            realmRep.setFailureFactor(backupRealm.getFailureFactor());
+            realmRep.setMaxDeltaTimeSeconds(backupRealm.getMaxDeltaTimeSeconds());
+            managedRealm.admin().update(realmRep);
+        } finally {
+            revertCIBASettings(clientResource, clientRep);
+        }
+    }
+
+    @Test
+    public void testBackchannelAuthnReqWithPermanentlyLockedUser() throws Exception {
+        ClientResource clientResource = null;
+        ClientRepresentation clientRep = null;
+        RealmRepresentation realmRep;
+        try {
+            final String username = "nutzername-gelb";
+
+            clientResource = AdminApiUtil.findClientByClientId(managedRealm.admin(), TEST_CLIENT_NAME);
+            clientRep = clientResource.toRepresentation();
+            prepareCIBASettings(clientResource, clientRep);
+            oauth.scope(OAuth2Constants.OFFLINE_ACCESS);
+            oauth.client(TEST_CLIENT_NAME, TEST_CLIENT_PASSWORD);
+
+            realmRep = managedRealm.admin().toRepresentation();
+            RealmRepresentation backupRealm = new RealmRepresentation();
+            backupRealm.setBruteForceProtected(realmRep.isBruteForceProtected());
+            backupRealm.setFailureFactor(realmRep.getFailureFactor());
+            backupRealm.setMaxDeltaTimeSeconds(realmRep.getMaxDeltaTimeSeconds());
+            backupRealm.setPermanentLockout(realmRep.isPermanentLockout());
+            backupRealm.setMaxTemporaryLockouts(realmRep.getMaxTemporaryLockouts());
+
+            realmRep.setBruteForceProtected(true);
+            realmRep.setFailureFactor(2);
+            realmRep.setMaxDeltaTimeSeconds(60);
+            realmRep.setPermanentLockout(true);
+            realmRep.setMaxTemporaryLockouts(0);
+            managedRealm.admin().update(realmRep);
+
+            List<UserRepresentation> users = managedRealm.admin().users().search(username);
+            assertThat(users.size(), is(1));
+            UserRepresentation user = users.get(0);
+
+
+            for (int i = 0; i < 3; i++) {
+                oauth.client(TEST_CLIENT_NAME, TEST_CLIENT_PASSWORD);
+                oauth.passwordGrantRequest(username, "wrongpassword").send();
+            }
+
+            // Verify user is permanently locked
+            // Backchannel Authentication Request should fail
+            AuthenticationRequestAcknowledgement response = oauth.ciba().backchannelAuthenticationRequest(username).send();
+            assertThat(response.getStatusCode(), is(equalTo(400)));
+            assertThat(response.getError(), is(OAuthErrorException.INVALID_REQUEST));
+            assertThat(response.getErrorDescription(), is("user permanently locked"));
+
+            managedRealm.admin().attackDetection().clearBruteForceForUser(user.getId());
+
+            response = oauth.ciba().backchannelAuthenticationRequest(username).send();
+            assertThat(response.getStatusCode(), is(equalTo(200)));
+            assertThat(response.getAuthReqId(), notNullValue());
+
+
+            realmRep.setBruteForceProtected(backupRealm.isBruteForceProtected());
+            realmRep.setFailureFactor(backupRealm.getFailureFactor());
+            realmRep.setMaxDeltaTimeSeconds(backupRealm.getMaxDeltaTimeSeconds());
+            realmRep.setPermanentLockout(backupRealm.isPermanentLockout());
+            realmRep.setMaxTemporaryLockouts(backupRealm.getMaxTemporaryLockouts());
+            managedRealm.admin().update(realmRep);
+        } finally {
+            revertCIBASettings(clientResource, clientRep);
+        }
+    }
+
+    @Test
     public void testBackchannelAuthnReqWithoutLoginHint() throws Exception {
         ClientResource clientResource = null;
         ClientRepresentation clientRep = null;

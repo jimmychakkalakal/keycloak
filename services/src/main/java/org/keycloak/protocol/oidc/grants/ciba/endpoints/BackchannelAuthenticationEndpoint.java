@@ -53,6 +53,7 @@ import org.keycloak.protocol.oidc.grants.ciba.resolvers.CIBALoginUserResolver;
 import org.keycloak.representations.idm.OAuth2ErrorRepresentation;
 import org.keycloak.services.ErrorResponseException;
 import org.keycloak.services.clientpolicy.ClientPolicyException;
+import org.keycloak.services.managers.BruteForceProtector;
 import org.keycloak.util.JsonSerialization;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -292,6 +293,18 @@ public class BackchannelAuthenticationEndpoint extends AbstractCibaEndpoint {
 
         if (user == null || !user.isEnabled())
             throw new ErrorResponseException(OAuthErrorException.INVALID_REQUEST, "invalid user", Response.Status.BAD_REQUEST);
+
+        BruteForceProtector protector = session.getProvider(BruteForceProtector.class);
+        if (protector != null) {
+            if (protector.isTemporarilyDisabled(session, realm, user)) {
+                throw new ErrorResponseException(OAuthErrorException.INVALID_REQUEST,
+                        "user temporarily disabled", Response.Status.BAD_REQUEST);
+            }
+            if (protector.isPermanentlyLockedOut(session, realm, user)) {
+                throw new ErrorResponseException(OAuthErrorException.INVALID_REQUEST,
+                        "user permanently locked", Response.Status.BAD_REQUEST);
+            }
+        }
 
         return user;
     }
