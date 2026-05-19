@@ -27,6 +27,7 @@ import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.models.utils.ModelToRepresentation;
 import org.keycloak.models.utils.RepresentationToModel;
 import org.keycloak.representations.idm.ErrorRepresentation;
+import org.keycloak.representations.idm.oid4vc.IssuedVerifiableCredentialsRepresentation;
 import org.keycloak.representations.idm.oid4vc.UserVerifiableCredentialRepresentation;
 import org.keycloak.services.ErrorResponse;
 import org.keycloak.services.resources.KeycloakOpenAPI;
@@ -150,6 +151,24 @@ public class UserVerifiableCredentialResource {
         }
 
         adminEvent.operation(OperationType.DELETE).resourcePath(session.getContext().getUri()).success();
+    }
+
+    @GET
+    @Path("issued-credentials")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Tag(name = KeycloakOpenAPI.Admin.Tags.USERS)
+    @Operation(summary = "Get issued verifiable credentials for the user")
+    @APIResponses(value = {
+            @APIResponse(responseCode = "200", description = "OK"),
+            @APIResponse(responseCode = "403", description = "Forbidden")
+    })
+    public List<IssuedVerifiableCredentialsRepresentation> getIssuedCredentials() {
+        auth.users().requireView(user);
+        checkOid4VCIEnabled();
+
+        return session.users().getIssuedVerifiableCredentialsByUser(user.getId())
+                .map(ModelToRepresentation::toRepresentation)
+                .toList();
     }
 
     private void checkOid4VCIEnabled() {

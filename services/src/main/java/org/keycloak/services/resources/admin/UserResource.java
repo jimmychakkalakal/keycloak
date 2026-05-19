@@ -92,6 +92,7 @@ import org.keycloak.models.utils.RoleUtils;
 import org.keycloak.models.utils.SystemClientUtil;
 import org.keycloak.organization.utils.Organizations;
 import org.keycloak.policy.PasswordPolicyNotMetException;
+import org.keycloak.protocol.oid4vc.resources.admin.IssuedVerifiableCredentialsResource;
 import org.keycloak.protocol.oid4vc.resources.admin.UserVerifiableCredentialResource;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.protocol.oidc.utils.RedirectUtils;
@@ -667,6 +668,11 @@ public class UserResource {
     @Path("vc")
     public UserVerifiableCredentialResource verifiableCredentials() {
         return new UserVerifiableCredentialResource(session, realm, user, auth, adminEvent);
+    }
+
+    @Path("issued-vcs")
+    public IssuedVerifiableCredentialsResource issuedVcs() {
+        return new IssuedVerifiableCredentialsResource(auth, user, session, realm);
     }
 
     /**

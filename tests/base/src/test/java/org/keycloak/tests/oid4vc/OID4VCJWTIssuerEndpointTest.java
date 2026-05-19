@@ -39,6 +39,7 @@ import org.keycloak.admin.client.resource.ClientResource;
 import org.keycloak.common.VerificationException;
 import org.keycloak.common.util.Base64Url;
 import org.keycloak.common.util.Time;
+import org.keycloak.connections.jpa.JpaConnectionProvider;
 import org.keycloak.crypto.Algorithm;
 import org.keycloak.jose.jws.JWSHeader;
 import org.keycloak.models.Constants;
@@ -70,6 +71,7 @@ import org.keycloak.representations.idm.ClientScopeRepresentation;
 import org.keycloak.representations.idm.KeysMetadataRepresentation;
 import org.keycloak.representations.idm.OAuth2ErrorRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
+import org.keycloak.representations.idm.oid4vc.IssuedVerifiableCredentialsRepresentation;
 import org.keycloak.services.managers.AppAuthManager.BearerTokenAuthenticator;
 import org.keycloak.testframework.annotations.KeycloakIntegrationTest;
 import org.keycloak.testframework.remote.runonserver.InjectRunOnServer;
@@ -97,6 +99,7 @@ import static org.keycloak.tests.oid4vc.OID4VCProofTestUtils.generateJwtProof;
 import static org.keycloak.tests.oid4vc.OID4VCProofTestUtils.generateJwtProofWithClaims;
 import static org.keycloak.tests.oid4vc.OID4VCProofTestUtils.jwtProofs;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -117,6 +120,10 @@ public class OID4VCJWTIssuerEndpointTest extends OID4VCIssuerEndpointTest {
     @AfterEach
     public void logout() {
         AccountHelper.logout(testRealm.admin(), "john");
+        runOnServer.run(session -> session.getProvider(JpaConnectionProvider.class)
+            .getEntityManager()
+            .createQuery("DELETE FROM IssuedVerifiableCredentialsEntity")
+            .executeUpdate());
     }
 
     @Test
@@ -1684,6 +1691,80 @@ public class OID4VCJWTIssuerEndpointTest extends OID4VCIssuerEndpointTest {
                 VCFormat.SD_JWT_VC,
                 CredentialScopeModel.VC_BUILD_CONFIG_TOKEN_JWS_TYPE_DEFAULT_SD_JWT_VC
         );
+    }
+
+    @Test
+    public void testIssuedCredentialsArePersistedAndRetrievableViaAdminAPI() {
+        String scopeName = jwtTypeCredentialScope.getName();
+        String credConfigId = jwtTypeCredentialScope.getAttributes().get(CredentialScopeModel.VC_CONFIGURATION_ID);
+
+        String userId = testRealm.admin().users().search("john").get(0).getId();
+
+        List<IssuedVerifiableCredentialsRepresentation> initialIssuedCreds = testRealm.admin().users().get(userId).verifiableCredentials().getIssuedCredentials();
+        assertTrue(initialIssuedCreds.isEmpty(), "No issued credentials should exist initially");
+
+        CredentialIssuer credentialIssuer = getCredentialIssuerMetadata();
+        OID4VCAuthorizationDetail authDetail = new OID4VCAuthorizationDetail();
+        authDetail.setType(OPENID_CREDENTIAL);
+        authDetail.setCredentialConfigurationId(credConfigId);
+        authDetail.setLocations(List.of(credentialIssuer.getCredentialIssuer()));
+
+        String authCode = getAuthorizationCode(oauth, client, "john", scopeName);
+        AccessTokenResponse tokenResponse = getBearerToken(oauth, authCode, authDetail);
+
+        String token = tokenResponse.getAccessToken();
+        List<OID4VCAuthorizationDetail> authDetailsResponse = tokenResponse.getOID4VCAuthorizationDetails();
+        String credentialIdentifier = authDetailsResponse.get(0).getCredentialIdentifiers().get(0);
+
+        String cNonce = getCNonce();
+        Proofs proofs = jwtProofs(credentialIssuer.getCredentialIssuer(), cNonce);
+
+        CredentialResponse credentialResponseVO = oauth.oid4vc()
+                .credentialRequest()
+                .bearerToken(token)
+                .credentialIdentifier(credentialIdentifier)
+                .proofs(proofs)
+                .send()
+                .getCredentialResponse();
+
+        assertNotNull(credentialResponseVO, "Credential should have been issued");
+        assertNotNull(credentialResponseVO.getCredentials(), "Credentials array should not be null");
+        assertFalse(credentialResponseVO.getCredentials().isEmpty(), "At least one credential should be issued");
+
+        List<IssuedVerifiableCredentialsRepresentation> issuedCreds = testRealm.admin().users().get(userId).verifiableCredentials().getIssuedCredentials();
+
+        assertEquals(1, issuedCreds.size(), "Exactly one issued credential should be stored");
+
+        IssuedVerifiableCredentialsRepresentation issuedCred = issuedCreds.get(0);
+
+        assertAll (
+                () -> assertNotNull(issuedCred.getId(), "Issued credential should have an ID"),
+                () -> assertEquals(userId, issuedCred.getUserId(), "User ID should match"),
+                () -> assertEquals(scopeName, issuedCred.getCredentialType(), "Credential type should match the scope name"),
+                () -> assertNotNull(issuedCred.getRevision(), "Revision should be set"),
+                () -> assertNotNull(issuedCred.getIssuedAt(), "IssuedAt timestamp should be set"),
+                () -> assertNotNull(issuedCred.getWalletId(), "WalletId should be set")
+        );
+
+        String cNonce2 = getCNonce();
+        Proofs proofs2 = jwtProofs(credentialIssuer.getCredentialIssuer(), cNonce2);
+
+        CredentialResponse credentialResponseVO2 = oauth.oid4vc()
+                .credentialRequest()
+                .bearerToken(token)
+                .credentialIdentifier(credentialIdentifier)
+                .proofs(proofs2)
+                .send()
+                .getCredentialResponse();
+
+        assertNotNull(credentialResponseVO2, "Second credential should have been issued");
+
+        List<IssuedVerifiableCredentialsRepresentation> multipleIssuedCreds = testRealm.admin().users().get(userId).verifiableCredentials().getIssuedCredentials();
+
+        assertEquals(2, multipleIssuedCreds.size(), "Two issued credentials should be stored");
+
+        // Verify sorting (newest first - DESC by issuedAt)
+        assertTrue(multipleIssuedCreds.get(0).getIssuedAt() >= multipleIssuedCreds.get(1).getIssuedAt(),"Issued credentials should be sorted by issuedAt DESC (newest first)");
     }
 
     public void testCredentialIssuanceSigningConfiguration(String kid, String alg) {

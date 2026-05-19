@@ -53,6 +53,7 @@ import org.keycloak.models.ClientScopeModel;
 import org.keycloak.models.FederatedIdentityModel;
 import org.keycloak.models.GroupModel;
 import org.keycloak.models.IdentityProviderModel;
+import org.keycloak.models.IssuedVerifiableCredentialsModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ModelDuplicateException;
 import org.keycloak.models.ModelException;
@@ -67,6 +68,7 @@ import org.keycloak.models.UserProvider;
 import org.keycloak.models.UserVerifiableCredentialModel;
 import org.keycloak.models.jpa.entities.CredentialEntity;
 import org.keycloak.models.jpa.entities.FederatedIdentityEntity;
+import org.keycloak.models.jpa.entities.IssuedVerifiableCredentialsEntity;
 import org.keycloak.models.jpa.entities.UserAttributeEntity;
 import org.keycloak.models.jpa.entities.UserConsentClientScopeEntity;
 import org.keycloak.models.jpa.entities.UserConsentEntity;
@@ -1020,6 +1022,34 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore, JpaUs
         return new org.keycloak.credential.UserCredentialManager(session, session.getContext().getRealm(), user);
     }
 
+    @Override
+    public void addIssuedVerifiableCredentials(IssuedVerifiableCredentialsModel model) {
+        IssuedVerifiableCredentialsEntity entity = new IssuedVerifiableCredentialsEntity();
+
+        entity.setId(KeycloakModelUtils.generateId());
+        entity.setUser(em.getReference(UserEntity.class, model.getUserId()));
+        entity.setCredentialType(model.getCredentialType());
+        entity.setWalletId(model.getWalletId());
+
+        String revision = model.getRevision() != null ? model.getRevision() : SecretGenerator.getInstance().generateSecureID();
+        entity.setRevision(revision);
+
+        long issuedAt = model.getIssuedAt() != null ? model.getIssuedAt() : Time.currentTimeMillis();
+        entity.setIssuedAt(issuedAt);
+
+        entity.setExpiresAt(model.getExpiresAt());
+
+        em.persist(entity);
+        em.flush();
+    }
+
+    @Override
+    public Stream<IssuedVerifiableCredentialsModel> getIssuedVerifiableCredentialsByUser(String userId) {
+        TypedQuery<IssuedVerifiableCredentialsEntity> query = em.createNamedQuery("issuedVcsByUser", IssuedVerifiableCredentialsEntity.class);
+        query.setParameter("userId", userId);
+        return closing(query.getResultStream()).map(this::toIssuedVcModel);
+    }
+
     // Could override this to provide a custom behavior.
     protected void ensureEmailConstraint(List<UserEntity> users, RealmModel realm) {
         UserEntity user = users.get(0);
@@ -1199,5 +1229,18 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore, JpaUs
         // Therefore, we use a standard count where possible.
         return query.select(from.getJoins().isEmpty() ? builder.count(from) : builder.countDistinct(from))
                 .where(predicates);
+    }
+
+    private IssuedVerifiableCredentialsModel toIssuedVcModel(IssuedVerifiableCredentialsEntity entity) {
+        IssuedVerifiableCredentialsModel model = new IssuedVerifiableCredentialsModel();
+        model.setId(entity.getId());
+        model.setUserId(entity.getUser().getId());
+        model.setCredentialType(entity.getCredentialType());
+        model.setRevision(entity.getRevision());
+        model.setIssuedAt(entity.getIssuedAt());
+        model.setExpiresAt(entity.getExpiresAt());
+        model.setWalletId(entity.getWalletId());
+
+        return model;
     }
 }

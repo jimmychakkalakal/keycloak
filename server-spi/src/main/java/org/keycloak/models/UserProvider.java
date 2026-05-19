@@ -330,4 +330,20 @@ public interface UserProvider extends Provider,
      */
     UserCredentialManager getUserCredentialManager(UserModel user);
 
+    /**
+     * Record that a verifiable credential was issued to a user.
+     *
+     * @param issuedVc model with userId, clientId, credentialType set
+     *
+     */
+    void addIssuedVerifiableCredentials(IssuedVerifiableCredentialsModel issuedVc);
+
+    /**
+     * Get all issued verifiable credentials for a specific user.
+     *
+     * @param userId user ID
+     * @return stream of issued verifiable credentials, sorted by issuedAt descending
+     */
+    Stream<IssuedVerifiableCredentialsModel> getIssuedVerifiableCredentialsByUser(String userId);
+
 }

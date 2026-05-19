@@ -39,6 +39,7 @@ import org.keycloak.models.CredentialValidationOutput;
 import org.keycloak.models.FederatedIdentityModel;
 import org.keycloak.models.GroupModel;
 import org.keycloak.models.IdentityProviderModel;
+import org.keycloak.models.IssuedVerifiableCredentialsModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakTransaction;
 import org.keycloak.models.ProtocolMapperModel;
@@ -868,6 +869,16 @@ public class UserCacheSession implements UserCache, OnCreateComponent, OnUpdateC
     @Override
     public Stream<UserVerifiableCredentialModel> getVerifiableCredentialsByUser(String userId) {
         return getDelegate().getVerifiableCredentialsByUser(userId);
+    }
+
+    @Override
+    public void addIssuedVerifiableCredentials(IssuedVerifiableCredentialsModel issuedVc) {
+        getDelegate().addIssuedVerifiableCredentials(issuedVc);
+    }
+
+    @Override
+    public Stream<IssuedVerifiableCredentialsModel> getIssuedVerifiableCredentialsByUser(String userId) {
+        return getDelegate().getIssuedVerifiableCredentialsByUser(userId);
     }
 
     @Override
