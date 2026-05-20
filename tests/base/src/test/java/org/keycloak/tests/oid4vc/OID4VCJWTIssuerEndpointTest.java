@@ -71,6 +71,7 @@ import org.keycloak.representations.idm.ClientScopeRepresentation;
 import org.keycloak.representations.idm.KeysMetadataRepresentation;
 import org.keycloak.representations.idm.OAuth2ErrorRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
+import org.keycloak.representations.idm.oid4vc.UserVerifiableCredentialRepresentation;
 import org.keycloak.representations.idm.oid4vc.IssuedVerifiableCredentialsRepresentation;
 import org.keycloak.services.managers.AppAuthManager.BearerTokenAuthenticator;
 import org.keycloak.testframework.annotations.KeycloakIntegrationTest;
@@ -111,7 +112,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-@KeycloakIntegrationTest(config = OID4VCIssuerTestBase.VCTestServerConfigRestCredentialOffer.class)
+@KeycloakIntegrationTest(config = OID4VCIssuerTestBase.VCTestServerWithRestCredentialOfferEnabled.class)
 public class OID4VCJWTIssuerEndpointTest extends OID4VCIssuerEndpointTest {
 
     @InjectRunOnServer
@@ -1453,6 +1454,12 @@ public class OID4VCJWTIssuerEndpointTest extends OID4VCIssuerEndpointTest {
         optionalScope = registerOptionalClientScope(optionalScope);
         ClientRepresentation testClient = testRealm.admin().clients().findByClientId(OID4VCI_CLIENT_ID).get(0);
         testRealm.admin().clients().get(testClient.getId()).addOptionalClientScope(optionalScope.getId());
+
+        // Add credential to user
+        UserVerifiableCredentialRepresentation credRep = new UserVerifiableCredentialRepresentation();
+        credRep.setCredentialScopeName("optional-jwt-credential");
+        String userId = testRealm.admin().users().search(TEST_USER).get(0).getId();
+        testRealm.admin().users().get(userId).verifiableCredentials().createCredential(credRep);
 
         final String scopeName = optionalScope.getName();
         final String configId = optionalScope.getAttributes().get(CredentialScopeModel.VC_CONFIGURATION_ID);
