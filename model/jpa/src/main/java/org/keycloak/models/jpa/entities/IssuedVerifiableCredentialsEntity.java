@@ -18,6 +18,7 @@ import jakarta.persistence.Table;
         @NamedQuery(name="issuedVcsByUser", query="select vc from IssuedVerifiableCredentialsEntity vc where vc.user.id = :userId order by vc.issuedAt desc"),
         @NamedQuery(name="deleteIssuedVcsByRealm", query="delete from IssuedVerifiableCredentialsEntity vc where vc.user IN (select u from UserEntity u where u.realmId = :realmId)"),
         @NamedQuery(name="deleteIssuedVcsByUser",  query="delete from IssuedVerifiableCredentialsEntity vc where vc.user.id = :userId"),
+        @NamedQuery(name="deleteIssuedVcsByClientScope", query="delete from IssuedVerifiableCredentialsEntity vc where vc.credentialType = :scopeName"),
 })
 public class IssuedVerifiableCredentialsEntity {
 

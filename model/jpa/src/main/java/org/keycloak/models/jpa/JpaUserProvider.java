@@ -172,6 +172,7 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore, JpaUs
         em.createNamedQuery("deleteUserConsentClientScopesByUser").setParameter("user", user).executeUpdate();
         em.createNamedQuery("deleteUserConsentsByUser").setParameter("user", user).executeUpdate();
         em.createNamedQuery("deleteVerifiableCredentialsByUser").setParameter("user", user).executeUpdate();
+        em.createNamedQuery("deleteIssuedVcsByUser").setParameter("userId", user.getId()).executeUpdate();
 
         em.remove(user);
         em.flush();
@@ -526,6 +527,8 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore, JpaUs
                 .setParameter("realmId", realm.getId()).executeUpdate();
         em.createNamedQuery("deleteVerifiableCredentialsByRealm")
                 .setParameter("realmId", realm.getId()).executeUpdate();
+        em.createNamedQuery("deleteIssuedVcsByRealm")
+                .setParameter("realmId", realm.getId()).executeUpdate();
         em.createNamedQuery("deleteUserRoleMappingsByRealm")
                 .setParameter("realmId", realm.getId()).executeUpdate();
         em.createNamedQuery("deleteUserRequiredActionsByRealm")
@@ -629,6 +632,9 @@ public class JpaUserProvider implements UserProvider, UserCredentialStore, JpaUs
                 .setParameter("scopeId", clientScope.getId())
                 .executeUpdate();
         em.createNamedQuery("deleteVerifiableCredentialsByClientScope")
+                .setParameter("scopeName", clientScope.getName())
+                .executeUpdate();
+        em.createNamedQuery("deleteIssuedVcsByClientScope")
                 .setParameter("scopeName", clientScope.getName())
                 .executeUpdate();
     }

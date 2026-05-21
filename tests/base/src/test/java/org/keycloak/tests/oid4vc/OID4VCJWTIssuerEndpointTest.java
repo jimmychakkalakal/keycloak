@@ -121,10 +121,6 @@ public class OID4VCJWTIssuerEndpointTest extends OID4VCIssuerEndpointTest {
     @AfterEach
     public void logout() {
         AccountHelper.logout(testRealm.admin(), "john");
-        runOnServer.run(session -> session.getProvider(JpaConnectionProvider.class)
-            .getEntityManager()
-            .createQuery("DELETE FROM IssuedVerifiableCredentialsEntity")
-            .executeUpdate());
     }
 
     @Test
@@ -1702,6 +1698,12 @@ public class OID4VCJWTIssuerEndpointTest extends OID4VCIssuerEndpointTest {
 
     @Test
     public void testIssuedCredentialsArePersistedAndRetrievableViaAdminAPI() {
+        // Clean up already issued credentials
+        runOnServer.run(session -> session.getProvider(JpaConnectionProvider.class)
+                .getEntityManager()
+                .createQuery("DELETE FROM IssuedVerifiableCredentialsEntity")
+                .executeUpdate());
+
         String scopeName = jwtTypeCredentialScope.getName();
         String credConfigId = jwtTypeCredentialScope.getAttributes().get(CredentialScopeModel.VC_CONFIGURATION_ID);
 

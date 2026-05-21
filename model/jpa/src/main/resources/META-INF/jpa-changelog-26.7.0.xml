@@ -236,11 +236,6 @@
             <column name="USER_ID"/>
             <column name="ISSUED_AT"/>
         </createIndex>
-
-        <!-- Index for listing by credential type -->
-        <createIndex tableName="ISSUED_VER_CREDENTIALS" indexName="IDX_ISSUED_VER_CREDENTIALS_TYPE">
-            <column name="CREDENTIAL_TYPE"/>
-        </createIndex>
     </changeSet>
 
 </databaseChangeLog>
