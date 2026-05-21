@@ -6,6 +6,7 @@ import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -34,6 +35,11 @@ public interface UserVerifiableCredentialResource {
     @DELETE
     @Path("credentials/{credentialScopeName}")
     void revokeCredential(@PathParam("credentialScopeName") String credentialScopeName);
+
+    @PUT
+    @Path("credentials/{credentialScopeName}")
+    @Produces(MediaType.APPLICATION_JSON)
+    UserVerifiableCredentialRepresentation updateCredential(@PathParam("credentialScopeName") String credentialScopeName);
 
     @GET
     @Path("issued-credentials")

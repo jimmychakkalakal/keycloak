@@ -872,6 +872,11 @@ public class UserCacheSession implements UserCache, OnCreateComponent, OnUpdateC
     }
 
     @Override
+    public UserVerifiableCredentialModel updateVerifiableCredential(String userId, String credentialScopeName) {
+        return getDelegate().updateVerifiableCredential(userId, credentialScopeName);
+    }
+
+    @Override
     public void addIssuedVerifiableCredentials(IssuedVerifiableCredentialsModel issuedVc) {
         getDelegate().addIssuedVerifiableCredentials(issuedVc);
     }
